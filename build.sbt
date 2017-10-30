@@ -1,17 +1,29 @@
 name := "persistentfsm"
  
-version := "1.0" 
+version := "1.0"
       
 lazy val `persistentfsm` = (project in file(".")).enablePlugins(PlayScala)
 
 resolvers += "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases"
       
 resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
+
+resolvers +=  "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
       
-scalaVersion := "2.12.2"
+scalaVersion := "2.11.7"
 
-libraryDependencies ++= Seq( jdbc , ehcache , ws , specs2 % Test , guice )
+val AkkaV = "2.4.14" // TODO sort
 
-unmanagedResourceDirectories in Test <+=  baseDirectory ( _ /"target/web/public/test" )  
+libraryDependencies ++= Seq(
+  //guice,
+  "com.typesafe.akka" %% "akka-cluster" % AkkaV,
+  "com.typesafe.akka" %% "akka-cluster-tools" % AkkaV,
+  "com.typesafe.akka" %% "akka-persistence" % AkkaV,
+  "mysql" % "mysql-connector-java" % "6.0.6",
+  "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.4.17.1"
+)
 
-      
+unmanagedResourceDirectories in Test <+=  baseDirectory ( _ /"target/web/public/test" )
+
+
+scalacOptions += "-language:postfixOps"

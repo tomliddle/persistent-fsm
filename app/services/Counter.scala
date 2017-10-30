@@ -1,29 +1,114 @@
 package services
 
-import java.util.concurrent.atomic.AtomicInteger
-import javax.inject._
+import akka.actor.{ActorLogging, Props}
+import akka.persistence.PersistentActor
+import akka.persistence.fsm.PersistentFSM
+import akka.persistence.fsm.PersistentFSM.FSMState
 
-/**
- * This trait demonstrates how to create a component that is injected
- * into a controller. The trait represents a counter that returns a
- * incremented number each time it is called.
- */
-trait Counter {
-  def nextCount(): Int
+import scala.concurrent.duration._
+import scala.reflect.ClassTag
+
+sealed trait Command
+case class AddItem(item: Item) extends Command
+case object Buy extends Command
+case object Leave extends Command
+case object GetCurrentCart extends Command
+
+
+
+sealed trait UserState extends FSMState
+case object LookingAround extends UserState {
+  override def identifier: String = "Looking Around"
+}
+case object Shopping extends UserState {
+  override def identifier: String = "Shopping"
+}
+case object Inactive extends UserState {
+  override def identifier: String = "Inactive"
+}
+case object Paid extends UserState {
+  override def identifier: String = "Paid"
 }
 
-/**
- * This class is a concrete implementation of the [[Counter]] trait.
- * It is configured for Guice dependency injection in the [[Module]]
- * class.
- *
- * This class has a `Singleton` annotation because we need to make
- * sure we only use one counter per application. Without this
- * annotation we would get a new instance every time a [[Counter]] is
- * injected.
- */
-@Singleton
-class AtomicCounter extends Counter {  
-  private val atomicCounter = new AtomicInteger()
-  override def nextCount(): Int = atomicCounter.getAndIncrement()
+
+sealed trait DomainEvent
+case class ItemAdded(item: Item) extends DomainEvent
+case object OrderExecuted extends DomainEvent
+case object OrderDiscarded extends DomainEvent
+
+case class Item(id: String, name: String, price: Float)
+
+sealed trait ShoppingCart {
+  def addItem(item: Item): ShoppingCart
+  def empty(): ShoppingCart
+}
+case object EmptyShoppingCart extends ShoppingCart {
+  def addItem(item: Item) = NonEmptyShoppingCart(item :: Nil)
+  def empty(): ShoppingCart = this
+}
+case class NonEmptyShoppingCart(items: Seq[Item]) extends ShoppingCart {
+  def addItem(item: Item) = NonEmptyShoppingCart(items :+ item)
+  def empty(): ShoppingCart = EmptyShoppingCart
+}
+
+
+
+object Counter {
+  def props(): Props = Props(new Counter())
+}
+
+class Counter(implicit val domainEventClassTag: ClassTag[DomainEvent]) extends PersistentActor with PersistentFSM[UserState, ShoppingCart, DomainEvent] with ActorLogging {
+
+  override val persistenceId = "counter"
+
+  startWith(LookingAround, EmptyShoppingCart)
+
+  when(LookingAround) {
+    case Event(AddItem(item), _) ⇒
+      goto(Shopping) applying ItemAdded(item) forMax (1 seconds)
+    case Event(GetCurrentCart, data) ⇒
+      stay replying data
+  }
+
+  when(Shopping) {
+    case Event(AddItem(item), _) ⇒
+      stay applying ItemAdded(item) forMax (1 seconds)
+    case Event(Buy, _) ⇒
+      goto(Paid) applying OrderExecuted andThen {
+        case NonEmptyShoppingCart(items) ⇒
+          saveStateSnapshot()
+        case EmptyShoppingCart ⇒ saveStateSnapshot()
+      }
+    case Event(Leave, _) ⇒
+      stop applying OrderDiscarded andThen {
+        case _ ⇒
+          saveStateSnapshot()
+      }
+    case Event(GetCurrentCart, data) ⇒
+      stay replying data
+    case Event(StateTimeout, _) ⇒
+      goto(Inactive) forMax (2 seconds)
+  }
+
+  when(Inactive) {
+    case Event(AddItem(item), _) ⇒
+      goto(Shopping) applying ItemAdded(item) forMax (1 seconds)
+    case Event(StateTimeout, _) ⇒
+      stop applying OrderDiscarded
+  }
+
+  when(Paid) {
+    case Event(Leave, _) ⇒ stop()
+    case Event(GetCurrentCart, data) ⇒
+      stay replying data
+  }
+
+
+  override def applyEvent(event: DomainEvent, cartBeforeEvent: ShoppingCart): ShoppingCart = {
+    event match {
+      case ItemAdded(item) ⇒ cartBeforeEvent.addItem(item)
+      case OrderExecuted   ⇒ cartBeforeEvent
+      case OrderDiscarded  ⇒ cartBeforeEvent.empty()
+    }
+  }
 }
