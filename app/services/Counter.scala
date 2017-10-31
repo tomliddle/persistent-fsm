@@ -18,21 +18,21 @@ case class GetCurrentCart(s: String) extends Command
 
 sealed trait UserState extends FSMState
 case object LookingAround extends UserState {
-  override def identifier: String = "Looking Around"
+  override def identifier: String = this.getClass.getName
 }
 case object Shopping extends UserState {
-  override def identifier: String = "Shopping"
+  override def identifier: String =  this.getClass.getName
 }
 case object Inactive extends UserState {
-  override def identifier: String = "Inactive"
+  override def identifier: String =  this.getClass.getName
 }
 case object Paid extends UserState {
-  override def identifier: String = "Paid"
+  override def identifier: String =  this.getClass.getName
 }
 
 
 sealed trait DomainEvent
-case class DomainEventAdd(item: Seq[Item]) extends DomainEvent
+case class DomainEventUpdate(item: ShoppingCart) extends DomainEvent
 case object OrderExecuted extends DomainEvent
 case object OrderDiscarded extends DomainEvent
 
@@ -52,21 +52,21 @@ object Counter {
 
 class Counter(implicit val domainEventClassTag: ClassTag[DomainEvent]) extends PersistentActor with PersistentFSM[UserState, ShoppingCart, DomainEvent] with ActorLogging {
 
-  override val persistenceId = "counter3"
+  override val persistenceId = "counter5"
 
 
   startWith(LookingAround, ShoppingCart())
 
   when(LookingAround) {
-    case Event(AddItems(item), _) ⇒
-      goto(Shopping) applying DomainEventAdd(item)
+    case Event(s: AddItems, _) ⇒
+      goto(Shopping) applying DomainEventUpdate(ShoppingCart(s.item))
     case Event(GetCurrentCart, data) ⇒
       stay replying data
   }
 
   when(Shopping) {
-    case Event(AddItems(item), _) ⇒
-      stay applying DomainEventAdd(item)// forMax (1 seconds)
+    case Event(s: AddItems, _) ⇒
+      stay applying DomainEventUpdate(ShoppingCart(s.item))// forMax (1 seconds)
     case Event(Buy, _) ⇒
       goto(Paid) applying OrderExecuted andThen {
         case ShoppingCart(items) ⇒
@@ -86,8 +86,8 @@ class Counter(implicit val domainEventClassTag: ClassTag[DomainEvent]) extends P
   }
 
   when(Inactive) {
-    case Event(AddItems(item), _) ⇒
-      goto(Shopping) applying DomainEventAdd(item)// forMax (1 seconds)
+    case Event(s: AddItems, _) ⇒
+      goto(Shopping) applying DomainEventUpdate(ShoppingCart(s.item))// forMax (1 seconds)
     case Event(StateTimeout, _) ⇒
       log.error("state timeout")
       stop applying OrderDiscarded
@@ -114,7 +114,7 @@ class Counter(implicit val domainEventClassTag: ClassTag[DomainEvent]) extends P
 
   override def applyEvent(event: DomainEvent, cartBeforeEvent: ShoppingCart): ShoppingCart = {
     event match {
-      case DomainEventAdd(item) ⇒ cartBeforeEvent.replaceItems(item)
+      case DomainEventUpdate(item) ⇒ item
       case OrderExecuted   ⇒ cartBeforeEvent
       case OrderDiscarded  ⇒ cartBeforeEvent.empty
     }
