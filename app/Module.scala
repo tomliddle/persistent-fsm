@@ -1,6 +1,6 @@
 import com.google.inject.AbstractModule
 import play.api.libs.concurrent.AkkaGuiceSupport
-import services.{Counter, CounterSupervisor, ReportActor}
+import services.{Counter, CounterSupervisor, Tester}
 
 
 /**
@@ -18,6 +18,9 @@ class Module extends AbstractModule with AkkaGuiceSupport {
   override def configure(): Unit = {
 
     bindActor[CounterSupervisor]("countersupervisor")
+
+
+    bindActor[Tester]("tester")
 
   }
 

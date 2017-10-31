@@ -20,7 +20,12 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-cluster-tools" % AkkaV,
   "com.typesafe.akka" %% "akka-persistence" % AkkaV,
   "mysql" % "mysql-connector-java" % "6.0.6",
-  "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.4.17.1"
+  "com.github.dnvriend" %% "akka-persistence-jdbc" % "2.4.17.1",
+  // Test
+  "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.0" % Test,
+  // https://mvnrepository.com/artifact/com.typesafe.akka/akka-testkit_2.11
+  "com.typesafe.akka" %% "akka-testkit" % AkkaV % Test
+
 )
 
 unmanagedResourceDirectories in Test <+=  baseDirectory ( _ /"target/web/public/test" )

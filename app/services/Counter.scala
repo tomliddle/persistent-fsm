@@ -12,7 +12,7 @@ sealed trait Command
 case class AddItem(item: Item) extends Command
 case object Buy extends Command
 case object Leave extends Command
-case object GetCurrentCart extends Command
+case class GetCurrentCart(s: String) extends Command
 
 
 
@@ -59,7 +59,8 @@ object Counter {
 
 class Counter(implicit val domainEventClassTag: ClassTag[DomainEvent]) extends PersistentActor with PersistentFSM[UserState, ShoppingCart, DomainEvent] with ActorLogging {
 
-  override val persistenceId = "counter"
+  override val persistenceId = "counter1"
+
 
   startWith(LookingAround, EmptyShoppingCart)
 
@@ -99,8 +100,23 @@ class Counter(implicit val domainEventClassTag: ClassTag[DomainEvent]) extends P
 
   when(Paid) {
     case Event(Leave, _) ⇒ stop()
-    case Event(GetCurrentCart, data) ⇒
+
+  }
+
+  whenUnhandled {
+    case Event(g: GetCurrentCart, data) ⇒
+      log.error(s"get current cart ${g.s} $data")
+      log.error(context.sender.path.name)
       stay replying data
+    case Event(s: String, _) =>
+      log.error("message")
+      stay
+    case Event(EmptyShoppingCart, _) =>
+      log.error("message2")
+      stay replying "reply2"
+    case Event(s: Any, _) =>
+      log.error(s + "message3324")
+      stay replying "reply3"
   }
 
 
