@@ -32,15 +32,15 @@ class Tester @Inject()(@Named("countersupervisor") counter: ActorRef) extends Ac
 
       counter ! "ASDfasdfsadf"
 
-      counter ! AddItem(Item("1", "1", 1.0f))
-      counter ! AddItem(Item("2", "2", 2.0f))
+      counter ! AddItems(Seq(Item("1", "1", 1.0f)))
+      counter ! AddItems(Seq(Item("2", "2", 2.0f)))
 
 
       log.error("2222")
       counter ! GetCurrentCart("2")
 
-      counter ! AddItem(Item("3", "3", 3.0f))
-      counter ! AddItem(Item("4", "4", 4.0f))
+      counter ! AddItems(Seq(Item("3", "3", 3.0f)))
+      counter ! AddItems(Seq(Item("4", "4", 4.0f)))
 
       log.error("33333")
       (counter ? GetCurrentCart("3")).map { s =>
