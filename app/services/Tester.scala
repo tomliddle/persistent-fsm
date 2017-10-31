@@ -14,7 +14,7 @@ class Tester @Inject()(@Named("countersupervisor") counter: ActorRef) extends Ac
   implicit val timeout = Timeout(5 seconds)
 
   override def preStart(): Unit = {
-    context.system.scheduler.scheduleOnce(10 seconds, context.self, "test")
+    context.system.scheduler.scheduleOnce(5 seconds, context.self, "test")
   }
 
 

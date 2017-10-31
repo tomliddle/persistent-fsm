@@ -66,14 +66,14 @@ class Counter(implicit val domainEventClassTag: ClassTag[DomainEvent]) extends P
 
   when(LookingAround) {
     case Event(AddItem(item), _) ⇒
-      goto(Shopping) applying ItemAdded(item) forMax (1 seconds)
+      goto(Shopping) applying ItemAdded(item)
     case Event(GetCurrentCart, data) ⇒
       stay replying data
   }
 
   when(Shopping) {
     case Event(AddItem(item), _) ⇒
-      stay applying ItemAdded(item) forMax (1 seconds)
+      stay applying ItemAdded(item)// forMax (1 seconds)
     case Event(Buy, _) ⇒
       goto(Paid) applying OrderExecuted andThen {
         case NonEmptyShoppingCart(items) ⇒
@@ -86,15 +86,18 @@ class Counter(implicit val domainEventClassTag: ClassTag[DomainEvent]) extends P
           saveStateSnapshot()
       }
     case Event(GetCurrentCart, data) ⇒
+      log.error(s"getting cart $data")
       stay replying data
     case Event(StateTimeout, _) ⇒
-      goto(Inactive) forMax (2 seconds)
+      log.error("state timeout")
+      goto(Inactive)// forMax (2 seconds)
   }
 
   when(Inactive) {
     case Event(AddItem(item), _) ⇒
-      goto(Shopping) applying ItemAdded(item) forMax (1 seconds)
+      goto(Shopping) applying ItemAdded(item)// forMax (1 seconds)
     case Event(StateTimeout, _) ⇒
+      log.error("state timeout")
       stop applying OrderDiscarded
   }
 
@@ -106,7 +109,7 @@ class Counter(implicit val domainEventClassTag: ClassTag[DomainEvent]) extends P
   whenUnhandled {
     case Event(g: GetCurrentCart, data) ⇒
       log.error(s"get current cart ${g.s} $data")
-      log.error(context.sender.path.name)
+      log.error(s" Name ios ${context.sender.path.name}")
       stay replying data
     case Event(s: String, _) =>
       log.error("message")
